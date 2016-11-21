@@ -3,13 +3,14 @@
 #include <string.h>
 
 #include "common.hpp"
-#include "../HeavyHitterCommon.h"
+#include "HeavyHitterCommon.h"
 #include "dyn_tbl.hpp"
 
 void dyn_tbl_get_heavy_key(dyn_tbl_p_t dyn_tbl, double thresh, myset& ret) {
     double bias = dyn_tbl->decrease_time;
     thresh = thresh - bias;
-    for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
+    //for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
+    for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
         if (abs(it->second) >= thresh) {
             dyn_tbl_key_t key = it->first;
             ret.insert(key);
@@ -46,7 +47,8 @@ void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output) {
 
     unsigned int len = dyn_tbl->data.size();
     fprintf(fp, "length: %u\n", len);
-    for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
+    // for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
+    for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
         dyn_tbl_key_t key = it->first;
         if (dyn_tbl->n == 32) {
             char addr1[30];
@@ -98,15 +100,15 @@ void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double
             dyn_tbl->data[key] = val;
         }
         else {
-            std::unordered_map<dyn_tbl_key_t, long long>::iterator it;
+            // std::unordered_map<dyn_tbl_key_t, long long>::iterator it;
             long long min = val;
-            for(it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
+            for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
                 if (it->second < min) {
                     min = it->second;
                 }
             }
             dyn_tbl->decrease_time += min;
-            for(it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ) {
+            for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ) {
                 it->second -= min;
                 if (it->second <= 0) {
                     dyn_tbl->data.erase(it++);

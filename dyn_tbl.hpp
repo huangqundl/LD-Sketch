@@ -1,9 +1,11 @@
 #ifndef DYN_MAJ_TBL_HPP
 #define DYN_MAJ_TBL_HPP
 
+#include <string.h>
 #include <unordered_set>
 #include <unordered_map>
-#include "../Hash.hpp"
+//#include "hash.h"
+#include "Hash.hpp"
 
 /**********************************************************
  * 
@@ -141,4 +143,5 @@ void dyn_tbl_copy(dyn_tbl_p_t from, dyn_tbl_p_t to);
  * @param output filename of the output file
  */
 void dyn_tbl_reset(dyn_tbl_p_t dyn_tbl);
+
 #endif

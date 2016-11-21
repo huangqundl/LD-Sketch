@@ -1,51 +1,100 @@
-#ifndef LD_SKETCH_HPP
-#define LD_SKETCH_HPP
+/*
+ * LDSketch.h
+ * - heavy hitter random partition
+ */
+#include "dyn_tbl.hpp"
 
-#include <set>
+/// Sketch structure
+typedef struct LDSketch_s {
+    /// bucket array
+	dyn_tbl_p_t* tbl;
 
-#include "../BasicDetector.hpp"
-#include "sketch_maj.hpp"
+    /*********************************************************
+     * read only variables
+     ********************************************************/
+    /// # of rows
+	int h;
 
-/// LD-Sketch detector
-class LDSketch // : public BasicDetector 
-{
+    /// # of buckets per row
+	int w;
 
-private:
-    /// Sketch for current epoch
-    sketch_maj_p_t sk_cur;
-    
-    /// Sketch for last epoch
-    sketch_maj_p_t sk_old;
+    /// # of counters in each tbl
+    int l;
 
-    /// number of rows
-    unsigned int depth;
-    
-    /// number of buckets in a row
-    unsigned int width;
+    /// total number of buckets
+    int size;
 
-    /// initial length for associative array
-    unsigned int length;
+    /// length of keys (in bits)
+	int n;
 
-private:
-    void reset();
+    /// detection threshold
+    double thresh_abs;
 
-    unsigned int fill_in_cand_list(double thresh);
+    /// id of detectors (detectors have different hash functions)
+    unsigned int tbl_id;
+} LDSketch_t;
 
-    void print_parameter();
+/*************************************************************
+ * create and destroy
+ ************************************************************/
 
-    void calculate_diff();
+/// init sketch
+// @return the pointer to the created sketch
+LDSketch_t* LDSketch_init(int w, int h, int l, int n, double thresh_abs, unsigned int tbl_id);
 
-public:
-    /// Constructor
-    LDSketch(Config* config, unsigned int id);
+/// free scketch
+void LDSketch_destroy(LDSketch_t* LDSketch);
 
-    void init();
+/*************************************************************
+ * read functions
+ ************************************************************/
 
-    void update(unsigned char* key, long long value);
+/// print out the sketch to file
+// @param sk target sketch
+// @param output name of output file
+void LDSketch_write_plaintext(LDSketch_t* sk, const char* output);
 
-    void print_internal_state(std::string);
+/// identify heavy keys
+// @param sk target sketch
+// @param thresh threshold for heavy keys
+// @param ret results of detected keys
+void LDSketch_get_heavy_keys(LDSketch_t* sk, double thresh, myset& ret);
 
-    void clean();
-};
+/// estimate the lower sum of a key
+// @param sk target sketch 
+// @param key
+// @return the estimated lower sum
+long long LDSketch_low_estimate(LDSketch_t* sk, dyn_tbl_key_t key);
 
-#endif
+/// estimate the upper sum of a key
+// @param sk target sketch 
+// @param key
+// @return the estimated upper sum
+long long LDSketch_up_estimate(LDSketch_t* sk, dyn_tbl_key_t key);
+
+/*************************************************************
+ * write functions
+ ************************************************************/
+
+/**
+ * update the sketch with an data item
+ * @param sk the target sketch
+ * @param key key of the data item
+ * @param val value of the data item
+ * @param T expansion parameter
+ */
+void LDSketch_update(LDSketch_t* sk, unsigned char* key, long long val);
+
+/**
+ * copy sketch
+ * @param from source sketch
+ * @param to target sketch
+ */
+void LDSketch_copy(LDSketch_t* from, LDSketch_t* to);
+
+/**
+ * reset sketch
+ * @param sk the target sketch
+ * @param output filename of the output file
+ */
+void LDSketch_reset(LDSketch_t* sk);
