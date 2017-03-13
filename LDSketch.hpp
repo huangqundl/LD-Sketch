@@ -58,20 +58,22 @@ void LDSketch_write_plaintext(LDSketch_t* sk, const char* output);
 /// identify heavy keys
 // @param sk target sketch
 // @param thresh threshold for heavy keys
-// @param ret results of detected keys
-void LDSketch_get_heavy_keys(LDSketch_t* sk, double thresh, myset& ret);
+// @param keys results of detected keys
+// @param vals results of detected key sizes 
+// @param num_key number of detected keys
+void LDSketch_get_heavy_keys(LDSketch_t* sk, long long thresh, unsigned char* keys, long long* vals, int* num_key);
 
 /// estimate the lower sum of a key
 // @param sk target sketch 
 // @param key
 // @return the estimated lower sum
-long long LDSketch_low_estimate(LDSketch_t* sk, dyn_tbl_key_t key);
+long long LDSketch_low_estimate(LDSketch_t* sk, unsigned char* key);
 
 /// estimate the upper sum of a key
 // @param sk target sketch 
 // @param key
 // @return the estimated upper sum
-long long LDSketch_up_estimate(LDSketch_t* sk, dyn_tbl_key_t key);
+long long LDSketch_up_estimate(LDSketch_t* sk, unsigned char* key);
 
 /*************************************************************
  * write functions

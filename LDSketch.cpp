@@ -254,7 +254,7 @@ void LDSketch_write_plaintext(LDSketch_t* sk, const char* outfile) {
 		for (j=0; j<sk->w; ++j) {
             //fprintf(fp, "%lld ", tbl->T[tbl->w*i + j]);
             unsigned int index = sk->w*i + j;
-            fprintf(fp, "%lld %lu, ", sk->tbl[index]->total, sk->tbl[index]->data.size());
+            fprintf(fp, "%lld %d, ", sk->tbl[index]->total, dyn_tbl_length(sk->tbl[index]));
 		}
         fprintf(fp, "\n");
 	}
@@ -263,29 +263,66 @@ void LDSketch_write_plaintext(LDSketch_t* sk, const char* outfile) {
 	fclose(fp);
 }
 
-void LDSketch_get_heavy_keys(LDSketch_t* sk, double thresh,
-        myset& ret) {
+void LDSketch_get_heavy_keys(LDSketch_t* sk, long long thresh,
+        unsigned char* keys, long long* vals, int* num_key) {
+
+
+    int max_array_len = 0;
     for (int i=0; i<sk->w*sk->h; ++i) {
         if (sk->tbl[i]->max_value >= thresh) {
-            dyn_tbl_get_heavy_key(sk->tbl[i], thresh, ret);
+            int len = dyn_tbl_length(sk->tbl[i]);
+            if (len > max_array_len) {
+                max_array_len = len;
+            }
         }
     }
+
+    unsigned char* tmp_keys = (unsigned char*)safe_calloc(max_array_len, sk->lgn/8, std::string("tmp heavy keys").c_str());
+    int tmp_n, n = 0;
+
+    for (int i=0; i<sk->w*sk->h; ++i) {
+        if (sk->tbl[i]->max_value >= thresh) {
+            dyn_tbl_get_heavy_key(sk->tbl[i], thresh, tmp_keys, &tmp_n);
+            for (int j=0; j<tmp_n; j++) {
+                // deduplicate
+                int k = 0;
+                for (; k<n; k++) {
+                    if (memcmp(tmp_keys+j*sk->lgn/8, keys+k*sk->lgn/8, sk->lgn/8)==0) {
+                        break;
+                    }
+                }
+                if (k < n) {
+                    break;
+                }
+
+                long long v = LDSketch_up_estimate(sk, tmp_keys+j*sk->lgn/8);
+                if (v >= thresh) {
+                    memcpy(keys+n*sk->lgn/8, tmp_keys+j*sk->lgn/8, sk->lgn/8);
+                    vals[n] = v;
+                    n++;
+                }
+            }
+        }
+    }
+
+    *num_key = n;
 }
 
-long long LDSketch_low_estimate(LDSketch_t* sk, dyn_tbl_key_t key) {
+long long LDSketch_low_estimate(LDSketch_t* sk, unsigned char* key) {
     long long ret = 0;
     for (int i=0; i<sk->h; ++i) {
-		int k = LDSketch_find(sk, key.key, 0, sk->lgn - 1, i);
+		int k = LDSketch_find(sk, key, 0, sk->lgn - 1, i);
         int index = i*sk->w+k;
         ret = MAX(ret, dyn_tbl_low_estimate(sk->tbl[index], key));
     }
     return ret;
 } 
 
-long long LDSketch_up_estimate(LDSketch_t* sk, dyn_tbl_key_t key) {
-    long long ret = 99999999999;
-    for (int i=0; i<sk->h; ++i) {
-		int k = LDSketch_find(sk, key.key, 0, sk->lgn - 1, i);
+long long LDSketch_up_estimate(LDSketch_t* sk, unsigned char* key) {
+	int k = LDSketch_find(sk, key, 0, sk->lgn - 1, 0);
+    long long ret = dyn_tbl_up_estimate(sk->tbl[k], key);
+    for (int i=1; i<sk->h; ++i) {
+		k = LDSketch_find(sk, key, 0, sk->lgn - 1, i);
         int index = i*sk->w+k;
         ret = MIN(ret, dyn_tbl_up_estimate(sk->tbl[index], key));
     }

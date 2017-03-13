@@ -13,12 +13,14 @@
  *
  **********************************************************/
 
+#define MAX_KEYLEN 13
+
 /**
  * Structure of key
  */
 typedef struct dyn_tbl_key_s {
-    /// 16-byte key
-    unsigned char key[16];
+    /// 13-byte key
+    unsigned char key[MAX_KEYLEN];
 } dyn_tbl_key_t;
 
 /**
@@ -26,7 +28,7 @@ typedef struct dyn_tbl_key_s {
  */
 typedef struct {
     /// overloaded operation
-    long operator() (const dyn_tbl_key_t &k) const { return AwareHash((unsigned char*)k.key, 16); }
+    long operator() (const dyn_tbl_key_t &k) const { return AwareHash((unsigned char*)k.key, MAX_KEYLEN); }
 } dyn_tbl_key_hash;
 
 /**
@@ -35,12 +37,12 @@ typedef struct {
 typedef struct {
     /// overloaded operation
     bool operator() (const dyn_tbl_key_t &x, const dyn_tbl_key_t &y) const {
-        return memcmp(x.key, y.key, 16)==0;
+        return memcmp(x.key, y.key, MAX_KEYLEN)==0;
     }
 } dyn_tbl_key_eq;
 
 
-typedef std::unordered_set<dyn_tbl_key_t, dyn_tbl_key_hash, dyn_tbl_key_eq> myset;
+// typedef std::unordered_set<dyn_tbl_key_t, dyn_tbl_key_hash, dyn_tbl_key_eq> myset;
 
 /**********************************************************
  * 
@@ -56,7 +58,7 @@ typedef std::unordered_set<dyn_tbl_key_t, dyn_tbl_key_hash, dyn_tbl_key_eq> myse
 typedef struct dyn_tbl_s {
 
     /// associative array: A(i,j)
-    std::unordered_map<dyn_tbl_key_t, long long, dyn_tbl_key_hash, dyn_tbl_key_eq> data;
+    std::unordered_map<dyn_tbl_key_t, long long, dyn_tbl_key_hash, dyn_tbl_key_eq> array;
 
     /// total sum: V(i,j)
     long long total;
@@ -77,7 +79,7 @@ typedef struct dyn_tbl_s {
      * read only members
      ***********************/
     /// length of keys
-    unsigned int n;
+    unsigned int lgn;
 } dyn_tbl_t;
 
 /*************************************************************
@@ -86,10 +88,10 @@ typedef struct dyn_tbl_s {
 
 /// init bucket
 // @param l length of associative array
-// @param n length of key
+// @param lgn length of key
 // @param T expansion parameter
 // @return the pointer to bucket
-dyn_tbl_t* dyn_tbl_init(unsigned int l, int n, long long T);
+dyn_tbl_t* dyn_tbl_init(unsigned int l, int lgn, long long T);
 
 /// free the bucket
 // @param dyn_tbl the target associative array
@@ -102,25 +104,31 @@ void dyn_tbl_destroy(dyn_tbl_t* dyn_tbl);
 /// identify heavy keys
 // @param dyn_tbl target bucket
 // @param thresh threshold for heavy keys
-// @param ret results of detected keys
-void dyn_tbl_get_heavy_key(dyn_tbl_t* dyn_tbl, double thresh, myset& ret);
+// @param keys results of detected keys
+// @param num_key number of detected keys
+void dyn_tbl_get_heavy_key(dyn_tbl_t* dyn_tbl, long long thresh, unsigned char* keys, int* num_key);
 
 /// estimate the lower sum of a key
 // @param dyn_tbl target bucket
 // @param key
 // @return the estimated lower sum
-long long dyn_tbl_low_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key);
+long long dyn_tbl_low_estimate(dyn_tbl_t* dyn_tbl, unsigned char* key);
 
 /// estimate the higher sum of a ket
 // @param dyn_tbl target bucket
 // @param key
 // @return the estimated higher sum
-long long dyn_tbl_up_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key);
+long long dyn_tbl_up_estimate(dyn_tbl_t* dyn_tbl, unsigned char* key);
 
 /// print out the sketch to file
 // @param dyn_tbl target bucket
 // @param output name of output file
 void dyn_tbl_print(dyn_tbl_t* dyn_tbl, const char* output);
+
+/// number of tracked elements in associative array
+// @param dyn_tbl target bucket
+// @return number of elements in associative array
+int dyn_tbl_length(dyn_tbl_t* dyn_tbl);
 
 /*************************************************************
  * write functions
