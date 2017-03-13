@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include "HeavyHitterCommon.h"
+
+#include "util.h"
+#include "hash.h"
 #include "LDSketch.hpp"
 
 /*
@@ -23,20 +25,20 @@ static void* safe_calloc(size_t nmemb, size_t size, const char* name) {
 	return ret;
 }
 
-/*
- * hash function
- */
-static unsigned int AwareHash(const char* data, unsigned int n) {
-	unsigned int hash = 388650253;
-	unsigned int scale = 388650319;
-	unsigned int hardener  = 1176845762;
-	while( n ) {
-		hash *= scale;
-		hash += *data++;
-		n--;
-	}
-	return hash ^ hardener;
-}
+///*
+// * hash function
+// */
+//static unsigned int AwareHash(const char* data, unsigned int n) {
+//	unsigned int hash = 388650253;
+//	unsigned int scale = 388650319;
+//	unsigned int hardener  = 1176845762;
+//	while( n ) {
+//		hash *= scale;
+//		hash += *data++;
+//		n--;
+//	}
+//	return hash ^ hardener;
+//}
 
 /*
  * mangle
@@ -79,7 +81,7 @@ static void unmangle(const unsigned char* key, unsigned char* ret_key,
 /*
  * Initialize the hh table
  */
-LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, double thresh_abs, unsigned int tbl_id) {
+LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, long long thresh_abs, unsigned int tbl_id) {
 	LDSketch_t* LDSketch;
 
 	// error checking
@@ -92,7 +94,7 @@ LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, double thresh_abs, unsig
 	LDSketch = (LDSketch_t*)safe_calloc(1, sizeof(LDSketch_t), std::string("LDSketch").c_str());
 	LDSketch->tbl = (dyn_tbl_t**)safe_calloc(h * w, sizeof(long long), std::string("tbl->tbl").c_str());
     for (int i=0; i<h*w; ++i) {
-        LDSketch->tbl[i] = dyn_tbl_init(l, lgn);
+        LDSketch->tbl[i] = dyn_tbl_init(l, lgn, thresh_abs);
     }
 
 	// set parameters
@@ -152,7 +154,7 @@ unsigned int LDSketch_find(LDSketch_t* tbl, const unsigned char* key, int start_
 	ret_bucket = (ret_bucket % tbl->K);
 	*/
 
-	ret_bucket = AwareHash((char*)key_str, 
+	ret_bucket = AwareHash(key_str, 
 			(unsigned int)(tbl->lgn/8 + sizeof(unsigned int))) % (tbl->w);
 
 	// return
@@ -173,7 +175,7 @@ void LDSketch_update(LDSketch_t* sk, unsigned char* key, long long val) {
 	for (j=0; j<sk->h; ++j) {
 		k = LDSketch_find(sk, key, 0, sk->lgn - 1, j);
 		//tbl->T[j*tbl->w+k] += val;
-		dyn_tbl_update(sk->tbl[j*sk->w+k], key, val, sk->thresh_abs);
+		dyn_tbl_update(sk->tbl[j*sk->w+k], key, val);
 	}
     //tbl->total += val;
 }

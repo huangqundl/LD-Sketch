@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#define MIN(x, y) x < y ? x : y
+#define MAX(x, y) x > y ? x : y
+
 /*
  * Convert IP (in network order) to string
  */

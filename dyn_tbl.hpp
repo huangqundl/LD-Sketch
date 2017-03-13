@@ -4,8 +4,8 @@
 #include <string.h>
 #include <unordered_set>
 #include <unordered_map>
-//#include "hash.h"
-#include "Hash.hpp"
+#include "hash.h"
+//#include "Hash.hpp"
 
 /**********************************************************
  * 
@@ -26,7 +26,7 @@ typedef struct dyn_tbl_key_s {
  */
 typedef struct {
     /// overloaded operation
-    long operator() (const dyn_tbl_key_t &k) const { return AwareHash(k.key, 16); }
+    long operator() (const dyn_tbl_key_t &k) const { return AwareHash((unsigned char*)k.key, 16); }
 } dyn_tbl_key_hash;
 
 /**
@@ -48,7 +48,7 @@ typedef std::unordered_set<dyn_tbl_key_t, dyn_tbl_key_hash, dyn_tbl_key_eq> myse
  *
  **********************************************************/
 
-typedef struct dyn_tbl_s * dyn_tbl_p_t;
+// typedef struct dyn_tbl_s * dyn_tbl_p_t;
 
 /**
  * Bucket structure
@@ -67,6 +67,9 @@ typedef struct dyn_tbl_s {
     /// total number of decrement: e(i, j)
     unsigned int decrement;
 
+    /// expansion parameter: T
+    long long T;
+
     /// maximum sum among keys, to speed up detection
     long long max_value;
 
@@ -84,12 +87,13 @@ typedef struct dyn_tbl_s {
 /// init bucket
 // @param l length of associative array
 // @param n length of key
+// @param T expansion parameter
 // @return the pointer to bucket
-dyn_tbl_p_t dyn_tbl_init(unsigned int l, int n);
+dyn_tbl_t* dyn_tbl_init(unsigned int l, int n, long long T);
 
 /// free the bucket
 // @param dyn_tbl the target associative array
-void dyn_tbl_destroy(dyn_tbl_p_t dyn_tbl);
+void dyn_tbl_destroy(dyn_tbl_t* dyn_tbl);
 
 /*************************************************************
  * read functions
@@ -99,24 +103,24 @@ void dyn_tbl_destroy(dyn_tbl_p_t dyn_tbl);
 // @param dyn_tbl target bucket
 // @param thresh threshold for heavy keys
 // @param ret results of detected keys
-void dyn_tbl_get_heavy_key(dyn_tbl_p_t dyn_tbl, double thresh, myset& ret);
+void dyn_tbl_get_heavy_key(dyn_tbl_t* dyn_tbl, double thresh, myset& ret);
 
 /// estimate the lower sum of a key
 // @param dyn_tbl target bucket
 // @param key
 // @return the estimated lower sum
-long long dyn_tbl_low_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key);
+long long dyn_tbl_low_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key);
 
 /// estimate the higher sum of a ket
 // @param dyn_tbl target bucket
 // @param key
 // @return the estimated higher sum
-long long dyn_tbl_up_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key);
+long long dyn_tbl_up_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key);
 
 /// print out the sketch to file
 // @param dyn_tbl target bucket
 // @param output name of output file
-void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output);
+void dyn_tbl_print(dyn_tbl_t* dyn_tbl, const char* output);
 
 /*************************************************************
  * write functions
@@ -127,22 +131,21 @@ void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output);
  * @param dyn_tbl the target bucket
  * @param key key of the data item
  * @param val value of the data item
- * @param T expansion parameter
  */
-void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key, int val, double T);
+void dyn_tbl_update(dyn_tbl_t* dyn_tbl, unsigned char* key, int val);
 
 /**
  * copy bucket
  * @param from source bucket
  * @param to target bucket
  */
-void dyn_tbl_copy(dyn_tbl_p_t from, dyn_tbl_p_t to);
+void dyn_tbl_copy(dyn_tbl_t* from, dyn_tbl_t* to);
 
 /**
  * reset bucket
  * @param dyn_tbl the target bucket
  * @param output filename of the output file
  */
-void dyn_tbl_reset(dyn_tbl_p_t dyn_tbl);
+void dyn_tbl_reset(dyn_tbl_t* dyn_tbl);
 
 #endif

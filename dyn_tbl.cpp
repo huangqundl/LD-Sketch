@@ -2,11 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.hpp"
-#include "HeavyHitterCommon.h"
+#include "util.h"
 #include "dyn_tbl.hpp"
 
-void dyn_tbl_get_heavy_key(dyn_tbl_p_t dyn_tbl, double thresh, myset& ret) {
+void dyn_tbl_get_heavy_key(dyn_tbl_t* dyn_tbl, double thresh, myset& ret) {
     double bias = dyn_tbl->decrement;
     thresh = thresh - bias;
     //for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
@@ -18,7 +17,7 @@ void dyn_tbl_get_heavy_key(dyn_tbl_p_t dyn_tbl, double thresh, myset& ret) {
     }
 }
 
-long long dyn_tbl_low_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key) {
+long long dyn_tbl_low_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key) {
     if (dyn_tbl->data.find(key) != dyn_tbl->data.end()) {
         return dyn_tbl->data[key];
     }
@@ -27,7 +26,7 @@ long long dyn_tbl_low_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key) {
     }
 }
 
-long long dyn_tbl_up_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key) {
+long long dyn_tbl_up_estimate(dyn_tbl_t* dyn_tbl, dyn_tbl_key_t& key) {
     long long ret = 0;
     if (dyn_tbl->data.find(key) != dyn_tbl->data.end()) {
         ret = dyn_tbl->data[key];
@@ -36,7 +35,7 @@ long long dyn_tbl_up_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key) {
     return ret + bias;
 }
 
-void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output) {
+void dyn_tbl_print(dyn_tbl_t* dyn_tbl, const char* output) {
     FILE* fp;
 
 	// open a file
@@ -67,7 +66,7 @@ void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output) {
 	fclose(fp);
 }
 
-void dyn_tbl_copy(dyn_tbl_p_t dyn_tbl_from, dyn_tbl_p_t dyn_tbl_to) {
+void dyn_tbl_copy(dyn_tbl_t* dyn_tbl_from, dyn_tbl_t* dyn_tbl_to) {
     dyn_tbl_to->data = dyn_tbl_from->data;
     dyn_tbl_to->decrement = dyn_tbl_from->decrement;
     dyn_tbl_to->total = dyn_tbl_from->total;
@@ -75,14 +74,14 @@ void dyn_tbl_copy(dyn_tbl_p_t dyn_tbl_from, dyn_tbl_p_t dyn_tbl_to) {
     dyn_tbl_to->max_value = dyn_tbl_from->max_value;
 }
 
-void dyn_tbl_reset(dyn_tbl_p_t dyn_tbl) {
+void dyn_tbl_reset(dyn_tbl_t* dyn_tbl) {
     dyn_tbl->data.clear();
     dyn_tbl->decrement = 0;
     dyn_tbl->total = 0;
     dyn_tbl->max_value = 0;
 }
 
-void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double thresh_abs) {
+void dyn_tbl_update(dyn_tbl_t* dyn_tbl, unsigned char* key_str, int val) {
 
     dyn_tbl_key_t key;
     memcpy(key.key, key_str, dyn_tbl->n/8);
@@ -92,7 +91,7 @@ void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double
         dyn_tbl->data[key] += val;
     }
     else {
-        unsigned int frac = dyn_tbl->total / thresh_abs;
+        unsigned int frac = dyn_tbl->total / dyn_tbl->T;
         if (dyn_tbl->data.size() < dyn_tbl->max_len) {
             dyn_tbl->data[key] = val;
         }
@@ -137,16 +136,17 @@ void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double
         dyn_tbl->max_value = value;
 }
 
-dyn_tbl_p_t dyn_tbl_init(unsigned int length, int n) {
-    dyn_tbl_p_t ret = (dyn_tbl_p_t)calloc(1, sizeof(dyn_tbl_t));
+dyn_tbl_t* dyn_tbl_init(unsigned int length, int n, long long T) {
+    dyn_tbl_t* ret = (dyn_tbl_t*)calloc(1, sizeof(dyn_tbl_t));
     ret->n = n;
     ret->max_len = length;
     ret->decrement = 0;
     ret->total = 0;
+    ret->T = T;
     ret->max_value = 0;
     return ret;
 }
 
-void dyn_tbl_destroy(dyn_tbl_p_t dyn_tbl) {
+void dyn_tbl_destroy(dyn_tbl_t* dyn_tbl) {
     free(dyn_tbl);
 }

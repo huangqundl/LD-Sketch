@@ -41,7 +41,7 @@ typedef struct LDSketch_s {
 
 /// init sketch
 // @return the pointer to the created sketch
-LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, double thresh_abs, unsigned int tbl_id);
+LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, long long thresh_abs, unsigned int tbl_id);
 
 /// free scketch
 void LDSketch_destroy(LDSketch_t* LDSketch);
