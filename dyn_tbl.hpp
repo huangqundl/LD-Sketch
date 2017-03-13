@@ -54,6 +54,7 @@ typedef struct dyn_tbl_s * dyn_tbl_p_t;
  * Bucket structure
  */
 typedef struct dyn_tbl_s {
+
     /// associative array: A(i,j)
     std::unordered_map<dyn_tbl_key_t, long long, dyn_tbl_key_hash, dyn_tbl_key_eq> data;
 
@@ -64,7 +65,7 @@ typedef struct dyn_tbl_s {
     unsigned int max_len;
 
     /// total number of decrement: e(i, j)
-    unsigned int decrease_time;
+    unsigned int decrement;
 
     /// maximum sum among keys, to speed up detection
     long long max_value;

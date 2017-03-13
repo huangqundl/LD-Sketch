@@ -6,8 +6,9 @@
 
 /// Sketch structure
 typedef struct LDSketch_s {
+
     /// bucket array
-	dyn_tbl_p_t* tbl;
+	dyn_tbl_t** tbl;
 
     /*********************************************************
      * read only variables
@@ -18,14 +19,14 @@ typedef struct LDSketch_s {
     /// # of buckets per row
 	int w;
 
-    /// # of counters in each tbl
+    /// init # of counters in each tbl (will grow later)
     int l;
 
     /// total number of buckets
-    int size;
+    // int size;
 
     /// length of keys (in bits)
-	int n;
+	int lgn;
 
     /// detection threshold
     double thresh_abs;
@@ -40,7 +41,7 @@ typedef struct LDSketch_s {
 
 /// init sketch
 // @return the pointer to the created sketch
-LDSketch_t* LDSketch_init(int w, int h, int l, int n, double thresh_abs, unsigned int tbl_id);
+LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, double thresh_abs, unsigned int tbl_id);
 
 /// free scketch
 void LDSketch_destroy(LDSketch_t* LDSketch);

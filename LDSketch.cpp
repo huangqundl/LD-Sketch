@@ -79,32 +79,31 @@ static void unmangle(const unsigned char* key, unsigned char* ret_key,
 /*
  * Initialize the hh table
  */
-LDSketch_t* LDSketch_init(int w, int h, int l, int n, double thresh_abs, unsigned int tbl_id) {
+LDSketch_t* LDSketch_init(int w, int h, int l, int lgn, double thresh_abs, unsigned int tbl_id) {
 	LDSketch_t* LDSketch;
 
 	// error checking
-	if (n / 8 > 13 || n % 8 != 0) {		// maximum # of bits of a key = 104
+	if (lgn / 8 > 13 || lgn % 8 != 0) {		// maximum # of bits of a key = 104
 		fprintf(stderr, "ERR: n too large or n not multiple of 8\n");
 		exit(-1);
 	}
 
 	// safe calloc
 	LDSketch = (LDSketch_t*)safe_calloc(1, sizeof(LDSketch_t), std::string("LDSketch").c_str());
-	//LDSketch->T = (long long*)safe_calloc(h * w, sizeof(long long), std::string("tbl->T").c_str());
 	LDSketch->tbl = (dyn_tbl_t**)safe_calloc(h * w, sizeof(long long), std::string("tbl->tbl").c_str());
     for (int i=0; i<h*w; ++i) {
-        LDSketch->tbl[i] = dyn_tbl_init(l, n);
+        LDSketch->tbl[i] = dyn_tbl_init(l, lgn);
     }
 
 	// set parameters
     LDSketch->h = h;
 	LDSketch->w = w;
     LDSketch->l = l;
-    LDSketch->size = h * w;
-	LDSketch->n = n;
+    // LDSketch->size = h * w;
+	LDSketch->lgn = lgn;
     LDSketch->tbl_id = tbl_id;
     LDSketch->thresh_abs = thresh_abs;
-    //LDSketch->total = 0;
+    // LDSketch->total = 0;
 
 	// return
 	return LDSketch;
@@ -140,7 +139,7 @@ unsigned int LDSketch_find(LDSketch_t* tbl, const unsigned char* key, int start_
 	//oper = part_no * tbl->[part_no] + array_no;
 	oper = tbl->h * tbl->tbl_id + row_no;
 	//oper = row_no;
-	memcpy(key_str + tbl->n/8, &oper, sizeof(unsigned int));
+	memcpy(key_str + tbl->lgn/8, &oper, sizeof(unsigned int));
 
 	/*
 	// hash
@@ -154,7 +153,7 @@ unsigned int LDSketch_find(LDSketch_t* tbl, const unsigned char* key, int start_
 	*/
 
 	ret_bucket = AwareHash((char*)key_str, 
-			(unsigned int)(tbl->n/8 + sizeof(unsigned int))) % (tbl->w);
+			(unsigned int)(tbl->lgn/8 + sizeof(unsigned int))) % (tbl->w);
 
 	// return
 	return ret_bucket;
@@ -164,17 +163,17 @@ unsigned int LDSketch_find(LDSketch_t* tbl, const unsigned char* key, int start_
 /*
  * Sequential hashign algorithm - encode keys (a.k.a. update step)
  */
-void LDSketch_update(LDSketch_t* tbl, unsigned char* key, long long val) {
+void LDSketch_update(LDSketch_t* sk, unsigned char* key, long long val) {
 	int j, k;
 
 	// mangle
 	// mangle(key, key_to_add, tbl->n/8);
 
 	// add key/val to table
-	for (j=0; j<tbl->h; ++j) {
-		k = LDSketch_find(tbl, key, 0, tbl->n - 1, j);
+	for (j=0; j<sk->h; ++j) {
+		k = LDSketch_find(sk, key, 0, sk->lgn - 1, j);
 		//tbl->T[j*tbl->w+k] += val;
-		dyn_tbl_update(tbl->tbl[j*tbl->w+k], key, val, tbl->thresh_abs);
+		dyn_tbl_update(sk->tbl[j*sk->w+k], key, val, sk->thresh_abs);
 	}
     //tbl->total += val;
 }
@@ -210,13 +209,13 @@ void LDSketch_reset(LDSketch_t* LDSketch) {
 /*
  * Destroy
  */
-void LDSketch_destroy(LDSketch_t* LDSketch) {
+void LDSketch_destroy(LDSketch_t* sk) {
 	//free(LDSketch->T);
-    for (int i=0; i<LDSketch->size; ++i) {
-        dyn_tbl_destroy(LDSketch->tbl[i]);
+    for (int i=0; i<sk->h*sk->w; ++i) {
+        dyn_tbl_destroy(sk->tbl[i]);
     }
-	free(LDSketch->tbl);
-	free(LDSketch);
+	free(sk->tbl);
+	free(sk);
 }
 
 /*
@@ -226,7 +225,7 @@ void LDSketch_destroy(LDSketch_t* LDSketch) {
  * by qhuang 20130618
  *
  */
-void LDSketch_write_plaintext(LDSketch_t* tbl, const char* outfile) {
+void LDSketch_write_plaintext(LDSketch_t* sk, const char* outfile) {
 	FILE* fp; 
 	int i, j;
 
@@ -237,23 +236,23 @@ void LDSketch_write_plaintext(LDSketch_t* tbl, const char* outfile) {
 	}
 
 	// write to a file (including n and bd???)
-    fprintf(fp, "Worker: %u, length of key: %d\n", tbl->tbl_id, tbl->n);
-	fprintf(fp, "# of hash row: %d\n", tbl->h);
-    fprintf(fp, "# of buckets: %d\n", tbl->w);
+    fprintf(fp, "Worker: %u, length of key: %d\n", sk->tbl_id, sk->lgn);
+	fprintf(fp, "# of hash row: %d\n", sk->h);
+    fprintf(fp, "# of buckets: %d\n", sk->w);
 
     uint64_t key_int = 0x0102030405060708;
     unsigned char* key = (unsigned char*)&key_int;
-    for (i=0; i<tbl->h; ++i) {
-        unsigned int k = LDSketch_find(tbl, key, 0, tbl->n - 1, i);
+    for (i=0; i<sk->h; ++i) {
+        unsigned int k = LDSketch_find(sk, key, 0, sk->lgn - 1, i);
         fprintf(fp, "%u ", k);
     }
     fprintf(fp, "\n");
 
-	for (i=0; i<tbl->h; ++i) {
-		for (j=0; j<tbl->w; ++j) {
+	for (i=0; i<sk->h; ++i) {
+		for (j=0; j<sk->w; ++j) {
             //fprintf(fp, "%lld ", tbl->T[tbl->w*i + j]);
-            unsigned int index = tbl->w*i + j;
-            fprintf(fp, "%lld %lu, ", tbl->tbl[index]->total, tbl->tbl[index]->data.size());
+            unsigned int index = sk->w*i + j;
+            fprintf(fp, "%lld %lu, ", sk->tbl[index]->total, sk->tbl[index]->data.size());
 		}
         fprintf(fp, "\n");
 	}
@@ -274,7 +273,7 @@ void LDSketch_get_heavy_keys(LDSketch_t* sk, double thresh,
 long long LDSketch_low_estimate(LDSketch_t* sk, dyn_tbl_key_t key) {
     long long ret = 0;
     for (int i=0; i<sk->h; ++i) {
-		int k = LDSketch_find(sk, key.key, 0, sk->n - 1, i);
+		int k = LDSketch_find(sk, key.key, 0, sk->lgn - 1, i);
         int index = i*sk->w+k;
         ret = MAX(ret, dyn_tbl_low_estimate(sk->tbl[index], key));
     }
@@ -284,7 +283,7 @@ long long LDSketch_low_estimate(LDSketch_t* sk, dyn_tbl_key_t key) {
 long long LDSketch_up_estimate(LDSketch_t* sk, dyn_tbl_key_t key) {
     long long ret = 99999999999;
     for (int i=0; i<sk->h; ++i) {
-		int k = LDSketch_find(sk, key.key, 0, sk->n - 1, i);
+		int k = LDSketch_find(sk, key.key, 0, sk->lgn - 1, i);
         int index = i*sk->w+k;
         ret = MIN(ret, dyn_tbl_up_estimate(sk->tbl[index], key));
     }

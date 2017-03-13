@@ -7,7 +7,7 @@
 #include "dyn_tbl.hpp"
 
 void dyn_tbl_get_heavy_key(dyn_tbl_p_t dyn_tbl, double thresh, myset& ret) {
-    double bias = dyn_tbl->decrease_time;
+    double bias = dyn_tbl->decrement;
     thresh = thresh - bias;
     //for(std::unordered_map<dyn_tbl_key_t, long long>::iterator it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
     for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ++it) {
@@ -32,7 +32,7 @@ long long dyn_tbl_up_estimate(dyn_tbl_p_t dyn_tbl, dyn_tbl_key_t& key) {
     if (dyn_tbl->data.find(key) != dyn_tbl->data.end()) {
         ret = dyn_tbl->data[key];
     }
-    double bias = dyn_tbl->decrease_time;
+    double bias = dyn_tbl->decrement;
     return ret + bias;
 }
 
@@ -69,7 +69,7 @@ void dyn_tbl_print(dyn_tbl_p_t dyn_tbl, const char* output) {
 
 void dyn_tbl_copy(dyn_tbl_p_t dyn_tbl_from, dyn_tbl_p_t dyn_tbl_to) {
     dyn_tbl_to->data = dyn_tbl_from->data;
-    dyn_tbl_to->decrease_time = dyn_tbl_from->decrease_time;
+    dyn_tbl_to->decrement = dyn_tbl_from->decrement;
     dyn_tbl_to->total = dyn_tbl_from->total;
     dyn_tbl_to->max_len = dyn_tbl_from->max_len;
     dyn_tbl_to->max_value = dyn_tbl_from->max_value;
@@ -77,12 +77,13 @@ void dyn_tbl_copy(dyn_tbl_p_t dyn_tbl_from, dyn_tbl_p_t dyn_tbl_to) {
 
 void dyn_tbl_reset(dyn_tbl_p_t dyn_tbl) {
     dyn_tbl->data.clear();
-    dyn_tbl->decrease_time = 0;
+    dyn_tbl->decrement = 0;
     dyn_tbl->total = 0;
     dyn_tbl->max_value = 0;
 }
 
 void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double thresh_abs) {
+
     dyn_tbl_key_t key;
     memcpy(key.key, key_str, dyn_tbl->n/8);
     dyn_tbl->total += val;
@@ -107,7 +108,7 @@ void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double
                     min = it->second;
                 }
             }
-            dyn_tbl->decrease_time += min;
+            dyn_tbl->decrement += min;
             for(auto it = dyn_tbl->data.begin(); it != dyn_tbl->data.end(); ) {
                 it->second -= min;
                 if (it->second <= 0) {
@@ -127,10 +128,10 @@ void dyn_tbl_update(dyn_tbl_p_t dyn_tbl, unsigned char* key_str, int val, double
     }
     long long value = 0;
     if (dyn_tbl->data.find(key) != dyn_tbl->data.end()) {
-        value = dyn_tbl->data[key] + dyn_tbl->decrease_time;
+        value = dyn_tbl->data[key] + dyn_tbl->decrement;
     }
     else {
-        value = dyn_tbl->decrease_time;
+        value = dyn_tbl->decrement;
     }
     if (value > dyn_tbl->max_value)
         dyn_tbl->max_value = value;
@@ -140,7 +141,7 @@ dyn_tbl_p_t dyn_tbl_init(unsigned int length, int n) {
     dyn_tbl_p_t ret = (dyn_tbl_p_t)calloc(1, sizeof(dyn_tbl_t));
     ret->n = n;
     ret->max_len = length;
-    ret->decrease_time = 0;
+    ret->decrement = 0;
     ret->total = 0;
     ret->max_value = 0;
     return ret;
